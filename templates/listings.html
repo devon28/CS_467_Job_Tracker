@@ -1,0 +1,56 @@
+<!-- jobs.html -->
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+    h2 {
+        text-align: center;
+        padding: 5px;
+        margin: 5px;
+    }
+
+</style>
+
+    <h2>Job Search</h2>
+    <form id="job-search-form" action="/listings" method="POST">
+        <label for="job-title">Job Title:</label>
+        <input type="text" id="job-title" name="job_title" required><br>
+
+        <label for="location">Location:</label>
+        <input type="text" id="location" name="location" required><br>
+
+        <!-- Add a CSRF token for security (make sure to generate the token in your Flask app) -->
+        <input type="hidden" name="csrf_token" value="YOUR_CSRF_TOKEN_HERE">
+
+        <input type="submit" value="Search">
+    </form>
+
+    {% if results|length > 0 %}
+    <div id="results">
+        <table id="job-listings" class="data-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Location</th>
+                    <th>Company</th>
+                    <th>Salary</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in results %}
+                <tr>
+                    <td>{{ job.title }}</td>
+                    <td>{{ job.location }}</td>
+                    <td>{{ job.company }}</td>
+                    <td>{{ job.average_salary }}</td>
+                </tr>
+                {% endfor %}
+               
+            </tbody>
+        </table>
+    </div>  
+    {% endif %}
+
+{% endblock %}

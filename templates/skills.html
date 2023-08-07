@@ -2,47 +2,249 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="table-container">
-    <h2 class="page-header">Skills</h2>
+
+<style>
    
-    <form class="data-form" style="display: none;">
-        <input type="text" id="job-input" placeholder="Enter a job">
-        <button type="submit">Save</button>
-    </form>
-    
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Skill</th>
-                <th>Required Jobs</th>
-                <th>Contact</th>
-                <th>Edit</th>
-                <th>Delete</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Pogo Sticking</td>
-                <td>Enron</td>
-                <td>Ron Trompson</td>
-                <td><button class="edit-button">Edit</button></td>
-                <td><button class="delete-button">Delete</button></td>
-            </tr>
-            <tr>
-                <td>Data Analytics</td>
-                <td>North Korean Stock Exchange</td>
-                <td>Bill Johnson</td>
-                <td><button class="edit-button">Edit</button></td>
-                <td><button class="delete-button">Delete</button></td>
-            </tr>
-            <!-- Add more job rows here -->
-        </tbody>
-    </table>
-    
-    <div class="add-container">
-        <h3>Add Skill</h3>
-        <button class="add-data-button">+</button>
+   #jobSkillsHeader {
+       text-align: center;
+       padding: 5px;
+       margin: 5px;
+   }
+
+   #mySkillsHeader {
+       text-align: center;
+       padding: 5px;
+       margin: 5px;
+   }
+
+   .table-container {
+       margin: 40px auto; /* Add more space between tables and center horizontally */
+   }
+
+   .toggle-button {
+       display: block; /* Display buttons as blocks to have them appear on separate lines */
+       padding: 10px;
+       margin: 10px auto; /* Add space between buttons and center horizontally */
+       border-radius: 5%;
+   }
+
+   
+    #jobSkillsHeader {
+        text-align: center;
+        padding: 5px;
+        margin: 5px;
+    }
+
+    #mySkillsHeader {
+        text-align: center;
+        padding: 5px;
+        margin: 5px;
+    }
+
+    #toggleTableButton {
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5%;
+    }
+
+</style>
+
+<div class="table-container">
+    <button id="toggleJobSkillsButton" onclick="toggleTable('jobSkillsDiv')">Skills Employers Want +</button>
+    <div id="jobSkillsDiv" style="display: none;">
+        <h2 id="jobSkillsHeader">In Demand Skills</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Skill</th>
+                    <th>% of Jobs</th>
+                    <th>Total Jobs</th>
+                    <th>Learned</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for skill in job_skills %}
+                <tr>
+                    <td>{{ skill.skill }}</td>
+                    <td>{{ skill.percentage }}</td>
+                    <td>{{ skill.count }}</td>
+                    <td>
+                        {% if skill.skill in my_skill_names %}
+                            <span style="color: green;">&#x2714;</span>  <!-- Green checkmark -->
+                        {% else %}
+                            <span style="color: red;">&#x2718;</span>  <!-- Red X -->
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+</div>
+
+<div class="table-container">
+    <button id="toggleMySkillsButton" onclick="toggleTable('mySkillsDiv')">My Skills +</button>
+    <div id="mySkillsDiv" style="display: none;">
+        <h2 id="mySkillsHeader">My Skills</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Skill</th>
+                    <th>Experience</th>
+                    <th>Edit</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for skill in my_skills %}
+                <tr>
+                    <td>{{ skill.skill }}</td>
+                    <td>{{ skill.experience }}</td>
+                    <td><button class="edit-button" onclick="navigateToEditSkillsPage(loop.index0)">Edit</button></td>
+                    <td><button class="delete-button" onclick="confirmDelete('{{ loop.index0 }}')">Delete</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="add-container">
+            <h3>Add Skill</h3>
+            <button class="add-data-button" onclick="addNewSkill()">+</button>
+        </div>
     </div>
+</div>
+
+<script>
+
+    
+
+
+    function navigateToEditSkillsPage(index) {
+        // JavaScript code to navigate to the edit_jobs page with the jobId as a query parameter
+        window.location.href = "{{ url_for('edit_skills') }}" + "?index=" + encodeURIComponent(index);
+    }
+
+    function confirmDelete(index) {
+        // Show a confirmation dialog
+        const result = confirm("Are you sure you want to delete this skill entry?");
+
+        // Check the user's choice
+        if (result) {
+            // The user clicked "OK" (Yes), perform the delete action
+            fetch("/deleteSkill", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ index: index }),
+            })
+            .then((result) => {
+                console.log("Skill deleted successfully:");
+                // Reload the page after saving the job
+                    refreshPage(); // This will refresh the page
+            })
+            .catch(error => {
+                console.error("Error saving skill:", error);
+            });
+        } else {
+            // The user clicked "Cancel" (No), do nothing or handle as needed
+            console.log("Delete canceled.");
+        }
+    }
+
+    function addNewSkill() {
+        // JavaScript code to add a new row with text boxes to the table
+        const newRow = document.createElement("tr");
+     
+        newRow.innerHTML = `
+        
+        <td><input type="text" class="input-box" placeholder="Skill"></td>
+            <td><input type="text" class="input-box" placeholder="Experience Level"></td>
+            <td><button class="save-button" onclick="saveSkill(this)">Save</button></td>
+            <td><button class="cancel-button" onclick="refreshPage(this)">Cancel</button></td>
+    `   ;
+        document.querySelector("#mySkillsDiv tbody").appendChild(newRow);
+    }
+    
+    function saveSkill(row) {
+        // Get the skill and experience level from the input boxes
+        const skill = row.closest("tr").querySelector("input[placeholder='Skill']").value;
+        const experienceLevel = row.closest("tr").querySelector("input[placeholder='Experience Level']").value;
+
+        // Check if both skill and experience level are provided
+        if (skill.trim() === "" || experienceLevel.trim() === "") {
+            alert("Please enter both Skill and Experience Level before saving.");
+            return;
+        }
+
+        // Send the skill data to the server and save it in the database
+        const formData = { "Skill": skill, "Experience Level": experienceLevel };
+        fetch("/saveSkill", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(formData),
+        })
+        .then((result) => {
+            console.log("Skill saved successfully:");
+            // Refresh the page after saving the skill
+            window.location.reload();
+        })
+        .catch(error => {
+            console.error("Error saving Skill:", error);
+        });
+    }
+    
+    function refreshPage() {
+        window.location.href = "{{ url_for('skills') }}";
+    }
+
+    function setInitialState() {
+        const mySkillsDiv = document.getElementById("mySkillsDiv");
+        const jobSkillsDiv = document.getElementById("jobSkillsDiv");
+
+        // Check state for My Skills table
+        const mySkillsState = localStorage.getItem("mySkillsDiv");
+        if (mySkillsState === "open") {
+            mySkillsDiv.style.display = "table"; // Show the div if it was open
+            document.getElementById("toggleMySkillsButton").innerText = "My Skills -"; // Update the button text
+        } else {
+            mySkillsDiv.style.display = "none"; // Hide the div if it was closed
+            document.getElementById("toggleMySkillsButton").innerText = "My Skills +"; // Update the button text
+        }
+
+        // Check state for Job Skills table
+        const jobSkillsState = localStorage.getItem("jobSkillsDiv");
+        if (jobSkillsState === "open") {
+            jobSkillsDiv.style.display = "table"; // Show the div if it was open
+            document.getElementById("toggleJobSkillsButton").innerText = "Skills Employers Want -"; // Update the button text
+        } else {
+            jobSkillsDiv.style.display = "none"; // Hide the div if it was closed
+            document.getElementById("toggleJobSkillsButton").innerText = "Skills Employers Want +"; // Update the button text
+        }
+    }
+
+    function toggleTable(tableId) {
+    const table = document.getElementById(tableId);
+    const button = document.getElementById(tableId === "jobSkillsDiv" ? "toggleJobSkillsButton" : "toggleMySkillsButton");
+
+    if (table.style.display === "none") {
+        table.style.display = "table"; // Show the table
+        button.innerText = tableId === "jobSkillsDiv" ? "Skills Employers Want -" : "My Skills -"; // Update the button text
+        // Save the state in local storage
+        localStorage.setItem(tableId, "open");
+    } else {
+        table.style.display = "none"; // Hide the table
+        button.innerText = tableId === "jobSkillsDiv" ? "Skills Employers Want +" : "My Skills +"; // Update the button text
+        // Save the state in local storage
+        localStorage.setItem(tableId, "closed");
+    }
+}
+
+ // Call setInitialState() on page load
+ window.onload = setInitialState;
+
+
+</script>
 
 {% endblock %}
