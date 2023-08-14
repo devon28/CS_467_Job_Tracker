@@ -43,9 +43,9 @@ google = oauth.remote_app(
 )
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
+    if request.method == 'POST' or request.method == 'GET':
         try:
             return google.authorize(callback=url_for('authorized', _external=True))
         except:
@@ -54,7 +54,7 @@ def login():
         return render_template('index.html')
 
 
-@app.route('/logout', methods=['POST'])
+@app.route('/logout', methods=['POST', 'GET'])
 def logout():
         session.pop('user', None)
         return redirect(url_for('index'))
@@ -62,37 +62,39 @@ def logout():
 
 @app.route('/login/authorized', methods=['POST', 'GET'])
 def authorized():
-    response = google.authorized_response()
-    if response is None or response.get('access_token') is None:
-        return 'Access denied: reason={}, error={}'.format(
-            request.args['error_reason'],
-            request.args['error_description']
-        )
-    # Get the ID token from the response
-    id_token_response = response.get('id_token')
-    if id_token_response is None:
-        return 'Failed to get the ID token from Google response.'
-    try:
-        id_info = id_token.verify_oauth2_token(id_token_response, google_requests.Request())
-        user_id = id_info.get('sub')
-        if user_id is None:
-            return 'Failed to get user information from Google ID token.'
-    except ValueError as e:
-        return f'Failed to decode and verify the Google ID token: {e}'
-    session['user'] = user_id
-    query = datastore_client.query(kind=constants.user)
-    users = list(query.fetch())
-    for user in users:
-        if user['id'] == user_id:
-            return redirect(url_for('skills'))
-    user_entity = datastore.entity.Entity(key=datastore_client.key(constants.user))
-    user_entity['id'] = user_id
-    user_entity['skills'] = []
-    user_entity['jobs'] = []
-    user_entity['contacts'] = []
-    datastore_client.put(user_entity)
-    # return 'Can you see this? 2'
-    return redirect(url_for('skills'))
+    if request.method == 'POST' or request.method == 'GET':
+        response = google.authorized_response()
+        if response is None or response.get('access_token') is None:
+            return 'Access denied: reason={}, error={}'.format(
+                request.args['error_reason'],
+                request.args['error_description']
+            )
+        # Get the ID token from the response
+        id_token_response = response.get('id_token')
+        if id_token_response is None:
+            return 'Failed to get the ID token from Google response.'
+        try:
+            id_info = id_token.verify_oauth2_token(id_token_response, google_requests.Request())
+            user_id = id_info.get('sub')
+            if user_id is None:
+                return 'Failed to get user information from Google ID token.'
+        except ValueError as e:
+            return f'Failed to decode and verify the Google ID token: {e}'
+        session['user'] = user_id
+        query = datastore_client.query(kind=constants.user)
+        users = list(query.fetch())
+        for user in users:
+            if user['id'] == user_id:
+                return redirect(url_for('skills'))
+        user_entity = datastore.entity.Entity(key=datastore_client.key(constants.user))
+        user_entity['id'] = user_id
+        user_entity['skills'] = []
+        user_entity['jobs'] = []
+        user_entity['contacts'] = []
+        datastore_client.put(user_entity)
+        # return 'Can you see this? 2'
+        return redirect(url_for('skills'))
+    return logout()
 
 
 @google.tokengetter
@@ -100,7 +102,7 @@ def get_google_oauth_token():
     return session.get('user')
 
 
-@app.route('/login-normal', methods=['POST'])
+@app.route('/login-normal', methods=['POST', 'GET'])
 def loginNormal():
     if request.method == 'POST':
         # The user has not signed in with Google, so we need to check for username and password
@@ -166,17 +168,10 @@ def skills():
     if request.method == 'GET':
        
         user_skills = user['skills']
-
         # Filter out any skill entries with a None value
         my_skills = [{'skill': skill.get('skill'), 'experience': skill.get('experience')} for skill in user_skills if skill.get('skill') is not None]
-        
         # Extract the names of all skills in "my_skills"
         my_skill_names = [skill['skill'] for skill in my_skills]
-
-        # Add print statements here to check the values of job_skills and my_skills
-        print("job_skills:", sorted_job_skills)
-        print("my_skills:", my_skills)
-
         return render_template('skills.html', my_skills=my_skills, job_skills=sorted_job_skills, my_skill_names=my_skill_names)
 
     else:
@@ -184,16 +179,12 @@ def skills():
 
 
 def get_job_skills(user):
-    
     jobs = user['jobs']
     skills = user['skills']
     skills_array = []
-
     for skill in skills:
-        # Check if the 'skill_name' key exists before accessing it
-        if 'skill_name' in skill:
-            skills_array.append(skill['skill_name'].lower())
-
+        if 'skill' in skill:
+            skills_array.append(skill['skill'].lower())
     skills_for_jobs_dict = {}
     skills_added = []
     total_jobs = 0
@@ -204,20 +195,18 @@ def get_job_skills(user):
 
         for skill in job_skills:
             if skill.lower() in skills_added:
-                skills_for_jobs_dict[skill.lower()] += 1
+                skills_for_jobs_dict[skill] += 1
             else:
-                skills_for_jobs_dict[skill.lower()] = 1
+                skills_for_jobs_dict[skill] = 1
             skills_added.append(skill.lower())
 
-    # Have a dictionary with each skill and the number of jobs it appears in
     display_skills_array = []
-
     for skill, count in skills_for_jobs_dict.items():
         percentage = str(int((count / total_jobs) * 100)) + "%"
-        learned = (skill in skills_array)
+        learned = (skill.lower() in skills_array)
         skill_display = {'skill': skill, 'percentage': percentage, 'count': count, 'learned': learned}
         display_skills_array.append(skill_display)
-    # Display set not sorted
+    # sort by percentage
     sorted_job_skills = sorted(display_skills_array, key=lambda x: x['count'], reverse=True)
     return sorted_job_skills
 
@@ -228,8 +217,6 @@ def saveSkill():
         skill_data = request.get_json()
         skillTitle = skill_data.get('Skill')
         experienceLevel = skill_data.get('Experience Level')
-
-        # Get the current user's entity
         user = getUser()
 
         # Add the new skill data to the user's skills list
@@ -237,7 +224,6 @@ def saveSkill():
             'skill': skillTitle,
             'experience': experienceLevel,
         })
-
         # Save the updated user entity in the database
         datastore_client.put(user)
 
@@ -245,9 +231,33 @@ def saveSkill():
     else:
         return ({'Error': 'Skill not created'}, 400)
 
-@app.route('/edit_skills')
+
+@app.route('/edit_skills', methods=['GET'])
 def edit_skills():
-    return render_template('edit_skills.html')
+    index = int(request.args.get('index'))
+    user = getUser()
+    skill = user['skills'][index]
+    return render_template('edit_skills.html', skill=skill, index=index)
+
+
+@app.route('/save_skill_edit', methods=['POST'])
+def save_skill_edit():
+    if request.method == 'POST':
+        index = int(request.form.get('index'))
+        skill_name = request.form.get('skill')
+        experience_level = request.form.get('experience')
+
+        # Update the skill details in the user's skills list
+        user = getUser()
+        skills = user['skills']
+        if index < len(skills):
+            skills[index]['skill'] = skill_name
+            skills[index]['experience'] = experience_level
+            datastore_client.put(user)
+
+        return redirect(url_for('skills'))
+    else:
+        return logout()
 
 
 @app.route('/deleteSkill', methods=['POST'])
@@ -291,7 +301,6 @@ def savejob():
         skills = job_data.get('Skills')
         start_date = job_data.get('Start Date')
         contact = job_data.get('Contact')
-
         user = getUser()
         if user == None:
             logout()
@@ -313,7 +322,6 @@ def savejob():
 @app.route('/deletejob', methods=['POST'])
 def delete_job():
     if request.method == 'POST':
-        # Get the job ID from the request body
         data = request.get_json()
         index = int(data.get('index'))
         if index is None:
@@ -327,6 +335,7 @@ def delete_job():
         return ('', 204)
     else:
         return ({'Error': 'Delete unsuccesful'}, 400)
+
 
 @app.route('/edit_jobs', methods=['GET'])
 def edit_jobs():
@@ -413,22 +422,59 @@ def saveContact():
 @app.route('/delete_contacts', methods=['POST'])
 def delete_contact():
     if request.method == 'POST':
-        contact_data = request.get_json()
-        index = contact_data.get('index')
-
+        # Get the job ID from the request body
+        data = request.get_json()
+        index = int(data.get('index'))
+        if index is None:
+            return ({"error": "Contact not provided"}, 400)
+        # Delete the job from the Datastore
         user = getUser()
-
-        del user['contacts'][index]
+        user['contacts'].pop(index)
         datastore_client.put(user)
-    
-        return ('successfully deleted', 201)
+
+        return ('', 204)
     else:
-        return ({'Error': 'Contact not deleted'}, 400)
+        return ({'Error': 'Delete unsuccesful'}, 400)
 
 
-@app.route('/edit_contacts')
+@app.route('/edit_contacts', methods=['GET'])
 def edit_contacts():
-    return render_template('edit_contacts.html')
+    if request.method == 'GET':
+        index = int(request.args.get('index'))
+        user = getUser()
+        contact = user['contacts'][index]
+        return render_template('edit_contacts.html', contact=contact, index=index)
+    else:
+        render_template('contacts.html')
+
+
+@app.route('/save_contact_edit', methods=['POST'])
+def save_contact_edit():
+    if request.method == 'POST':
+        index = int(request.form.get('index'))
+        name = request.form.get('name')
+        company = request.form.get('company')
+        title = request.form.get('title')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+
+        # Update the job in the jobs list if the index is valid
+        if index >= 0:
+            user = getUser()
+            if not user:
+                return redirect(url_for('login'))
+            contacts = user['contacts']
+            if index < len(contacts):
+                contacts[index]['name'] = name
+                contacts[index]['company'] = company
+                contacts[index]['title'] = title
+                contacts[index]['phone'] = phone
+                contacts[index]['email'] = email
+                datastore_client.put(user)
+
+        return render_template('contacts.html', user_entity=user)
+    else:
+        return render_template('index.html')
 
 
 @app.route('/listings', methods=['GET', 'POST'])
@@ -474,13 +520,8 @@ def getUser():
     if current_id == None:
         return None
     query = datastore_client.query(kind=constants.user)
-    #query.add_filter('id', '=', session.get('user'))
     users = list(query.fetch())
     for user in users:
         if user['id'] == current_id:
             return user
     return None
-
-
-if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8080, debug=True)
