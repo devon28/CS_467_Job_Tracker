@@ -50,6 +50,36 @@
 </style>
 
 <div class="table-container">
+    <div id="mySkillsDiv" style="display: none;">
+        <h2 id="mySkillsHeader">My Skills</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Skill</th>
+                    <th>Experience</th>
+                    <th>Edit</th>
+                    <th>Delete</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for skill in my_skills %}
+                <tr>
+                    <td>{{ skill.skill }}</td>
+                    <td id="experience{{ loop.index }}">{{ skill.experience }}</td>
+                    <td><button class="edit-button" onclick="navigateToEditSkillsPage('{{ loop.index0 }}')">Edit</button></td>
+                    <td><button class="delete-button" onclick="confirmDelete('{{ loop.index0 }}')">Delete</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="add-container">
+            <h3>Add Skill</h3>
+            <button class="add-data-button" onclick="addNewSkill()">+</button>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
     <button id="toggleJobSkillsButton" onclick="toggleTable('jobSkillsDiv')">Skills Employers Want +</button>
     <div id="jobSkillsDiv" style="display: none;">
         <h2 id="jobSkillsHeader">In Demand Skills</h2>
@@ -79,37 +109,6 @@
                 {% endfor %}
             </tbody>
         </table>
-    </div>
-</div>
-
-<div class="table-container">
-    <button id="toggleMySkillsButton" onclick="toggleTable('mySkillsDiv')">My Skills +</button>
-    <div id="mySkillsDiv" style="display: none;">
-        <h2 id="mySkillsHeader">My Skills</h2>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Skill</th>
-                    <th>Experience</th>
-                    <th>Edit</th>
-                    <th>Delete</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for skill in my_skills %}
-                <tr>
-                    <td>{{ skill.skill }}</td>
-                    <td id="experience{{ loop.index }}">{{ skill.experience }}</td>
-                    <td><button class="edit-button" onclick="navigateToEditSkillsPage('{{ loop.index0 }}')">Edit</button></td>
-                    <td><button class="delete-button" onclick="confirmDelete('{{ loop.index0 }}')">Delete</button></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <div class="add-container">
-            <h3>Add Skill</h3>
-            <button class="add-data-button" onclick="addNewSkill()">+</button>
-        </div>
     </div>
 </div>
 
