@@ -20,7 +20,7 @@ app.secret_key = os.urandom(24)
 bcrypt = Bcrypt(app)
 oauth = OAuth(app)
 
-key = os.environ.get('CONSUMER_KEY')
+key = os.environ.get('CONSUMER_KEY')         # google oauth key and secret
 secret = os.environ.get('CONSUMER_SECRET')
 
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -28,6 +28,7 @@ app.config['SESSION_FILE_DIR'] = '/tmp/sessions'
 Session(app)
 
 
+# initilaize google oauth object
 google = oauth.remote_app(
     'google',
     consumer_key=str(key),
@@ -43,6 +44,7 @@ google = oauth.remote_app(
 )
 
 
+#login route for google oauth
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST' or request.method == 'GET':
@@ -54,12 +56,16 @@ def login():
         return render_template('index.html')
 
 
+# logout clear session bring to login page
 @app.route('/logout', methods=['POST', 'GET'])
 def logout():
         session.pop('user', None)
         return redirect(url_for('index'))
 
 
+# google redirect method verify google account credentials
+# set session['user'] to sub property of google auth
+# load skills page
 @app.route('/login/authorized', methods=['POST', 'GET'])
 def authorized():
     if request.method == 'POST' or request.method == 'GET':
@@ -102,6 +108,9 @@ def get_google_oauth_token():
     return session.get('user')
 
 
+# login without google get username and password from form
+# set session['user'] to username
+# load skills page
 @app.route('/login-normal', methods=['POST', 'GET'])
 def loginNormal():
     if request.method == 'POST':
@@ -124,6 +133,9 @@ def loginNormal():
     return render_template('index.html', error=error)
 
 
+# register without google if not registered
+# set session['user'] to username
+# render skills page
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -147,16 +159,20 @@ def register():
         return render_template('index.html')
 
 
+# login page index
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
+# show instructions on how to use app
 @app.route('/instructions')
 def instructions():
     return render_template('instructions.html')
 
 
+# render skills page
+# create table of skills found in jobs
 @app.route('/skills')
 def skills():
     user = getUser()
@@ -177,7 +193,8 @@ def skills():
     else:
         return logout()
 
-
+# create array of skills found in jobs with number of jobs and percentages
+# return array to skills()
 def get_job_skills(user):
     jobs = user['jobs']
     skills = user['skills']
@@ -211,6 +228,9 @@ def get_job_skills(user):
     return sorted_job_skills
 
 
+# save skill
+# return 201 if succesful
+# return code 400 if error
 @app.route('/saveSkill', methods=['POST'])
 def saveSkill():
     if request.method == 'POST':
@@ -232,6 +252,7 @@ def saveSkill():
         return ({'Error': 'Skill not created'}, 400)
 
 
+# render page to edit skill with input boxes pre filled
 @app.route('/edit_skills', methods=['GET'])
 def edit_skills():
     index = int(request.args.get('index'))
@@ -240,6 +261,9 @@ def edit_skills():
     return render_template('edit_skills.html', skill=skill, index=index)
 
 
+# sake an edited skill
+# return to skills page if successful
+# logout if error
 @app.route('/save_skill_edit', methods=['POST'])
 def save_skill_edit():
     if request.method == 'POST':
@@ -259,7 +283,9 @@ def save_skill_edit():
     else:
         return logout()
 
-
+# delete skill
+# return code 204 if successfull
+# return 400 if error
 @app.route('/deleteSkill', methods=['POST'])
 def delete_skill():
     if request.method == 'POST':
@@ -278,6 +304,7 @@ def delete_skill():
         return ({'Error': 'Delete unsuccesful'}, 400)
 
 
+# render jobs page
 @app.route('/jobs', methods=['GET'])
 def jobs():
     user = getUser()
@@ -291,7 +318,9 @@ def jobs():
     else:
         return logout()
     
-
+# save new job
+# return code 201 on success
+# return code 400 on failure
 @app.route('/savejob', methods=['POST'])
 def savejob():
     if request.method == 'POST':
@@ -319,6 +348,9 @@ def savejob():
         return ({'Error': 'Job not created'}, 400)
 
 
+# delete job
+# return code 204 on success
+# return code 400 on failure
 @app.route('/deletejob', methods=['POST'])
 def delete_job():
     if request.method == 'POST':
@@ -337,6 +369,7 @@ def delete_job():
         return ({'Error': 'Delete unsuccesful'}, 400)
 
 
+# render edit jobs page with inputs pre filled with selected job
 @app.route('/edit_jobs', methods=['GET'])
 def edit_jobs():
     if request.method == 'GET':
@@ -352,6 +385,9 @@ def edit_jobs():
     else:
         return logout()
 
+
+# save edited job
+# update job in database
 @app.route('/saveJobEdit', methods=['POST'])
 def saveJobEdit():
     if request.method == 'POST':
@@ -379,6 +415,7 @@ def saveJobEdit():
         return logout()
 
 
+# render contacts page
 @app.route('/contacts')
 def contacts():
     # Retrieve the user_id from the session
@@ -393,6 +430,9 @@ def contacts():
     return render_template('contacts.html', user_entity=user_entity)
     
 
+# save new contact
+# return code 201 on success
+# return code 400 on failure
 @app.route('/saveContact', methods=['POST'])
 def saveContact():
     if request.method == 'POST':
@@ -419,6 +459,9 @@ def saveContact():
         return ({'Error': 'Contact not created'}, 400)
 
 
+# delete
+# return code 204 on success
+# return code 400 on failure
 @app.route('/delete_contacts', methods=['POST'])
 def delete_contact():
     if request.method == 'POST':
@@ -437,6 +480,7 @@ def delete_contact():
         return ({'Error': 'Delete unsuccesful'}, 400)
 
 
+# render edit contact page with inputs pre filled with selected job
 @app.route('/edit_contacts', methods=['GET'])
 def edit_contacts():
     if request.method == 'GET':
@@ -448,6 +492,9 @@ def edit_contacts():
         render_template('contacts.html')
 
 
+# save edited job
+# return code 201 on success
+# return code 400 on failure
 @app.route('/save_contact_edit', methods=['POST'])
 def save_contact_edit():
     if request.method == 'POST':
@@ -477,6 +524,8 @@ def save_contact_edit():
         return render_template('index.html')
 
 
+# GET render listings page
+# POST render listings page with table filled with results of search
 @app.route('/listings', methods=['GET', 'POST'])
 def listings():
     user = getUser()
@@ -515,6 +564,7 @@ def listings():
         return logout()
 
 
+# get logged in user from session
 def getUser():
     current_id = session.get('user', None)
     if current_id == None:
